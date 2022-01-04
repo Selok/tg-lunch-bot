@@ -1,10 +1,11 @@
-version: "3"
+version: '3.4'
 services:
-  app:
+  tglunchbot:
+    image: tglunchbot
     container_name: hko-lunch-bot
-    build: .
+    build:
+      context: .
+      dockerfile: ./Dockerfile
     environment:
-      - MSG_TIME=${MSG_TIME}
       - TOKEN=${TOKEN}
-      - CHAT_ID=${CHAT_ID}
     restart: always

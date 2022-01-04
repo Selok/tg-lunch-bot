@@ -1,57 +1,27 @@
-import telegram
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from telegram import ParseMode
-from datetime import datetime, time
-from pytz import timezone
-from threading import Timer
-import os, sys, inspect
-
-import logging, logging.config
-
+import os
 from telegram.update import Update
 from telegram.ext import CallbackContext
-from typing import Dict, Tuple
+from telegram.ext.filters import Filters
 
-logging.basicConfig(
-    filename="app.log",
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(module)s - %(funcName)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
-
-from decide_lunch import getLunchDecision, getTxt
-from setting import BotConfig, ChannelConfig, TimestampConfig, ReplyStrMap
-from bot_basic_handler import *
-
+from config import setup
 from tg_ops.bot import Bot
+from decide_lunch.enrollment import add_me, remove_me
 
-def test(bot: Bot, update: Update, context: CallbackContext):
-    bot.log.info(f"{update}, {context}")
+def test(instance: Bot, update: Update, context: CallbackContext):
+    update.message.reply_text(f"{update}, {context}")
+    instance.log.info(f"{update}, {context}")
 
-def start(update: Update, context: CallbackContext) -> None:
-    """Inform user about what this bot can do"""
-    update.message.reply_text(
-        'Please select /poll to get a Poll, /quiz to get a Quiz or /preview'
-        ' to generate a preview for your poll'
-    )
-    
-def help_handler(update: Update, context: CallbackContext) -> None:
-    """Display a help message"""
-    update.message.reply_text("Use /quiz, /poll or /preview to test this bot.")
+def tag_all(update: Update, context: CallbackContext):
+    content = str(update.message.text)
+    print(content)
 
 if __name__ == "__main__":
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    root.addHandler(handler)
+    setup()
 
     token = os.environ.get("TOKEN")
     bot = Bot(token)
-    bot.addFunc('test', test, 't')
+    bot.addCommand('test', test, 't', 'test message')
+    bot.addCommand('add_me', add_me, 'add_me', 'Add to lunch name list')
+    bot.addCommand('remove_me', remove_me, 'remove_me', 'Remove from lunch name list')
+    bot.addMessageHandler('tag_all', tag_all, Filters.text)
     bot.start()
-
