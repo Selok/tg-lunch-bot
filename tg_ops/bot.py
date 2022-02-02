@@ -12,6 +12,12 @@ from telegram.utils.types import SLT
 
 from utils.base import LoggingBase
 
+BotCallback = Callable[['Bot', Update, CallbackContext], Any]
+EntryPoint = Callable[['Bot', Update, CallbackContext], object]
+ConversationCallbackMap = Dict[object, BotCallback]
+ConversationMessageMap = Dict[object, Tuple[Filters, BotCallback]]
+Fallback = Tuple[SLT[str], BotCallback]
+
 
 class Bot(LoggingBase):
     """Telegram bot instance
@@ -49,13 +55,13 @@ class Bot(LoggingBase):
         """Display a help message"""
         update.message.reply_text(f"{self._helpMsg}")
 
-    def addCmd(self, method_name: str, commands: SLT[str], func: Callable[['Bot', Update, CallbackContext], Any], helpMsg: Optional[str] = None):
+    def addCmd(self, method_name: str, commands: SLT[str], func: BotCallback, helpMsg: Optional[str] = None):
         """Add command handler to bot
 
         Args:
             method_name (str): Function name, use for debug
             commands (SLT[str]): Command and its alias
-            func (Callable[['Bot', Update, CallbackContext], Any]): Actual Handler 
+            func (BotCallback): Actual Handler 
             helpMsg (Optional[str]): Help message
         """
         self._updateHelpMsg(commands, helpMsg)
@@ -68,12 +74,12 @@ class Bot(LoggingBase):
             )
         )
 
-    def addMsg(self, method_name: str, func: Callable[['Bot', Update, CallbackContext], Any], filters: Filters):
+    def addMsg(self, method_name: str, func: BotCallback, filters: Filters):
         """Add message handler to bot
 
         Args:
             method_name (str): Function name, use for debug
-            func (Callable[['Bot', Update, CallbackContext], Any]): Actual Handler 
+            func (BotCallback): Actual Handler 
             filters (Filters): Message filter
         """
         setattr(self, method_name, MethodType(func, self))
@@ -88,23 +94,10 @@ class Bot(LoggingBase):
         self,
         method_name: str,
         commands: SLT[str],
-        entry_point: Callable[['Bot', Update, CallbackContext], object],
-        callback_states: Optional[Dict[
-            object,
-            Callable[['Bot', Update, CallbackContext], Any]
-        ]] = {},
-        msg_state: Optional[Dict[
-            object,
-            Tuple[
-                Filters, Callable[['Bot', Update, CallbackContext], Any]
-            ]
-        ]] = {},
-        fallback: Optional[
-            Tuple[
-                SLT[str],
-                Callable[['Bot', Update, CallbackContext], Any]
-            ]
-        ] = None,
+        entry_point: EntryPoint,
+        callback_states: Optional[ConversationCallbackMap] = {},
+        msg_state: Optional[ConversationMessageMap] = {},
+        fallback: Optional[Fallback] = None,
         helpMsg: Optional[str] = None
     ):
         """Add conversation handler to bot
@@ -112,9 +105,10 @@ class Bot(LoggingBase):
         Args:
             method_name (str): Function name, use for debug
             commands (SLT[str]): Command and its alias
-            entry_point (Callable[['Bot', Update, CallbackContext], Any]): Actual Handler,
-            callback_states (Optional[Dict[object, Callable[['Bot', Update, CallbackContext], Any]]]): Command handler trigger by user feedback,
-            msg_state (Optional[Dict[object, Tuple[Callable[['Bot', Update, CallbackContext], Any]], Filters]]): Message handler trigger by user feedback,
+            entry_point (EntryPoint): Actual Handler,
+            callback_states (Optional[ConversationCallbackMap]): Command handler trigger by user feedback,
+            msg_state (Optional[ConversationMessageMap]): Message handler trigger by user feedback,
+            fallback (Optional[Fallback]): Command handlers trigger if all handlers return false,
             helpMsg (Optional[str]): Help message
         """
         self._updateHelpMsg(commands, helpMsg)
@@ -174,4 +168,3 @@ class Bot(LoggingBase):
         if self._updater:
             self._running = False
             self._updater.stop()
-
