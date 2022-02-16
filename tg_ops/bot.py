@@ -2,6 +2,7 @@ import os
 import asyncio
 from typing import List, Dict, Callable, Optional, Any, Tuple
 from types import MethodType
+from telegram import InlineKeyboardMarkup
 from telegram.ext.callbackcontext import CallbackContext
 
 from telegram.update import Update
@@ -41,7 +42,6 @@ class Bot(LoggingBase):
     def setup(self, token: str, help_commands: SLT[str]):
         """initial object
         """
-        print(f"updater: {token}")
         self._updater = Updater(token, use_context=True)
         self._updater.dispatcher.add_handler(
             CommandHandler(help_commands, self.help))
@@ -88,6 +88,18 @@ class Bot(LoggingBase):
                 filters, getattr(self, method_name),
                 run_async=True
             )
+        )
+
+    def addCallback(self, method_name: str, func: BotCallback):
+        """Add command handler to bot
+
+        Args:
+            method_name (str): Function name, use for debug
+            func (BotCallback): Actual Handler
+        """
+        setattr(self, method_name, MethodType(func, self))
+        self._updater.dispatcher.add_handler(
+            CallbackQueryHandler(getattr(self, method_name), run_async=True)
         )
 
     def addConversation(
@@ -153,13 +165,20 @@ class Bot(LoggingBase):
             )
             self._helpMsg += f"{command_str} - {helpMsg}{os.linesep}"
 
+    def sendmsg(self, chat_id: int, message: str, markup: Optional[InlineKeyboardMarkup] = None):
+        """send message to chat
+
+        Args:
+            chat_id (int): chat id
+            message (str): message body
+            markup (Optional[InlineKeyboardMarkup]): inline keyboard
+        """
+        self._updater.bot.send_message(chat_id, message, reply_markup=markup)
+
     async def start(self):
-        print('start')
         if self._updater:
             self._running = True
-            print('start_polling')
             self._updater.start_polling()
-            print('idle')
             while self._running:
                 await asyncio.sleep(10)
             # self._updater.idle()

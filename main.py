@@ -6,9 +6,16 @@ from telegram.ext.filters import Filters
 from config import setup
 from tg_ops.bot import Bot
 from tg_ops.example import cmd, msg
-from decide_lunch.enrollment import add_me, remove_me
+from decide_lunch.servant import Servant, add_me, remove_me
+from decide_lunch.scheduler import Scheduler
+from message.simple import SimpleMessager
 
 from telegram.ext import ConversationHandler
+
+from poll_test import setup as setup_poll
+from edit_reply_test import setup as setup_reply
+from reply_keyboard_test import setup as setup_reply_keyboard
+
 def start(instance: Bot, update: Update, context: CallbackContext):
     ''' Replies to start command '''
     update.message.reply_text('Hi! I am alive')
@@ -74,27 +81,6 @@ def get_name(instance: Bot, update: Update, context: CallbackContext):
         'name', 'Not found. Set your name using /set_name command')
     update.message.reply_text(value)
 
-async def sendmsg(instance: Bot):
-    ''' Entry point of conversation  this gives  buttons to user'''
-
-    print('sendmsg')
-
-    button = [[InlineKeyboardButton("join", callback_data='join'), InlineKeyboardButton("pass", callback_data='pass')]]
-    markup = InlineKeyboardMarkup(button)
-
-    # you can add more buttons here
-
-    #  learn more about inline keyboard
-    # https://github.com/python-telegram-bot/python-telegram-bot/wiki/InlineKeyboard-Example
-
-    await asyncio.sleep(1)
-
-    instance._updater.bot.send_message(-1001210702490, 'Name button', reply_markup=markup)
-
-    print('sent')
-
-    return EXPECT_BUTTON_CLICK
-
 import asyncio
 async def timer_alert(instance: Bot, update: Update, context: CallbackContext):
     ''' Entry point of conversation  this gives  buttons to user'''
@@ -120,27 +106,32 @@ if __name__ == "__main__":
 
     token = os.environ.get("TOKEN")
     bot = Bot(token)
-    bot.addCmd('test', ['t', 'test'], cmd, 'test message')
+    # bot.addCmd('test', ['t', 'test'], cmd, 'test message')
     # bot.addMsg('msg', msg, Filters.text)
     
-    bot.addCmd('add_me', 'add_me', add_me, 'Add to lunch name list')
-    bot.addCmd('remove_me', 'remove_me', remove_me, 'Remove from lunch name list')
+    # bot.addConversation(
+    #     'conversation', 
+    #     'set_name', 
+    #     set_name_handler, 
+    #     {EXPECT_BUTTON_CLICK: button_click_handler},
+    #     {EXPECT_NAME: (Filters.text, name_input_by_user)},
+    #     ('cancel', cancel),
+    #     'conversation test'
+    # )
+    # bot.addCmd('conversation_result', ['get_name'], get_name, 'conversation test result')
 
-    bot.addConversation(
-        'conversation', 
-        'set_name', 
-        set_name_handler, 
-        {EXPECT_BUTTON_CLICK: button_click_handler},
-        {EXPECT_NAME: (Filters.text, name_input_by_user)},
-        ('cancel', cancel),
-        'conversation test'
-    )
-    bot.addCmd('conversation_result', ['get_name'], get_name, 'conversation test result')
+    # setup_reply_keyboard(bot._updater.dispatcher)
+
+    messager = SimpleMessager()
+    scheduler = Scheduler([-687899940], messager)
+    servant = Servant(messager, bot)
     
     loop = asyncio.get_event_loop()
     tasks = [
-        asyncio.ensure_future(sendmsg(bot), loop=loop),
-        asyncio.ensure_future(bot.start(), loop=loop)
+        asyncio.ensure_future(bot.start(), loop=loop),
+        asyncio.ensure_future(servant.start(), loop=loop),
+        asyncio.ensure_future(messager.start(), loop=loop),
+        asyncio.ensure_future(scheduler.start(), loop=loop)
     ]
 
     loop.run_until_complete(asyncio.wait(tasks))
