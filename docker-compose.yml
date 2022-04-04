@@ -1,8 +1,8 @@
 version: '3.4'
 services:
-  tglunchbot:
-    image: tglunchbot
-    container_name: hko-lunch-bot
+  lunch-bot:
+    image: lunch-bot
+    container_name: lunch-bot
     build:
       context: .
       dockerfile: ./Dockerfile
